@@ -24,10 +24,10 @@ const DIRECTION = {
 
 const init = async () => {
   const networkId = await web3.eth.net.getId();
-  const flashloan = new web3.eth.Contract(
-    Flashloan.abi,
-    Flashloan.networks[networkId].address
-  );
+  // const flashloan = new web3.eth.Contract(
+  //   Flashloan.abi,
+  //   Flashloan.networks[networkId].address
+  // );
   
   let ethPrice;
   const updateEthPrice = async () => {
@@ -39,11 +39,12 @@ const init = async () => {
         1
       )
       .call();
-    ethPrice = web3.utils.toBN('1').mul(web3.utils.toBN(results.expectedRate)).div(ONE_WEI);
+    const priceInEth = web3.utils.toBN(results.expectedRate).div(ONE_WEI);
+    return priceInEth; 
   }
-  console.log(`Current eth price ${ethPrice}`)
-  await updateEthPrice();
+  ethPrice = await updateEthPrice();
   setInterval(updateEthPrice, 15000);
+  console.log(`Current eth price ${ethPrice}`)
 
   web3.eth.subscribe('newBlockHeaders')
     .on('data', async block => {
@@ -93,16 +94,19 @@ const init = async () => {
       console.log(`Uniswap -> Kyber. Dai input / output: ${web3.utils.fromWei(AMOUNT_DAI_WEI.toString())} / ${web3.utils.fromWei(daiFromKyber.toString())}`);
 
       if(daiFromUniswap.gt(AMOUNT_DAI_WEI)) {
-        const tx = flashloan.methods.initiateFlashloan(
-          addresses.dydx.solo, 
-          addresses.tokens.dai, 
-          AMOUNT_DAI_WEI,
-          DIRECTION.KYBER_TO_UNISWAP
-        );
-        const [gasPrice, gasCost] = await Promise.all([
-          web3.eth.getGasPrice(),
-          tx.estimateGas({from: admin}),
-        ]);
+        // const tx = flashloan.methods.initiateFlashloan(
+        //   addresses.dydx.solo, 
+        //   addresses.tokens.dai, 
+        //   AMOUNT_DAI_WEI,
+        //   DIRECTION.KYBER_TO_UNISWAP
+        // );
+        // const [gasPrice, gasCost] = await Promise.all([
+        //   web3.eth.getGasPrice(),
+        //   tx.estimateGas({from: admin}),
+        // ]);
+
+        const gasPrice = await web3.eth.getGasPrice();
+        const gasCost = 50000;
 
         const txCost = web3.utils.toBN(gasCost).mul(web3.utils.toBN(gasPrice)).mul(ethPrice);
         const profit = daiFromUniswap.sub(AMOUNT_DAI_WEI).sub(txCost);
@@ -111,29 +115,33 @@ const init = async () => {
           console.log('Arb opportunity found Kyber -> Uniswap!');
           console.log(`Expected profit: ${web3.utils.fromWei(profit)} Dai`);
           const data = tx.encodeABI();
-          const txData = {
-            from: admin,
-            to: flashloan.options.address,
-            data,
-            gas: gasCost,
-            gasPrice
-          };
-          const receipt = await web3.eth.sendTransaction(txData);
-          console.log(`Transaction hash: ${receipt.transactionHash}`);
+          // const txData = {
+          //   from: admin,
+          //   to: flashloan.options.address,
+          //   data,
+          //   gas: gasCost,
+          //   gasPrice
+          // };
+          // const receipt = await web3.eth.sendTransaction(txData);
+          // console.log(`Transaction hash: ${receipt.transactionHash}`);
         }
       }
 
       if(daiFromKyber.gt(AMOUNT_DAI_WEI)) {
-        const tx = flashloan.methods.initiateFlashloan(
-          addresses.dydx.solo, 
-          addresses.tokens.dai, 
-          AMOUNT_DAI_WEI,
-          DIRECTION.UNISWAP_TO_KYBER
-        );
-        const [gasPrice, gasCost] = await Promise.all([
-          web3.eth.getGasPrice(),
-          tx.estimateGas({from: admin}),
-        ]);
+        // const tx = flashloan.methods.initiateFlashloan(
+        //   addresses.dydx.solo, 
+        //   addresses.tokens.dai, 
+        //   AMOUNT_DAI_WEI,
+        //   DIRECTION.UNISWAP_TO_KYBER
+        // );
+        // const [gasPrice, gasCost] = await Promise.all([
+        //   web3.eth.getGasPrice(),
+        //   tx.estimateGas({from: admin}),
+        // ]);
+
+        const gasPrice = await web3.eth.getGasPrice();
+        const gasCost = 50000;
+
         const txCost = web3.utils.toBN(gasCost).mul(web3.utils.toBN(gasPrice)).mul(ethPrice);
         const profit = daiFromKyber.sub(AMOUNT_DAI_WEI).sub(txCost);
 
@@ -148,8 +156,8 @@ const init = async () => {
             gas: gasCost,
             gasPrice
           };
-          const receipt = await web3.eth.sendTransaction(txData);
-          console.log(`Transaction hash: ${receipt.transactionHash}`);
+          // const receipt = await web3.eth.sendTransaction(txData);
+          // console.log(`Transaction hash: ${receipt.transactionHash}`);
         }
       }
     })
